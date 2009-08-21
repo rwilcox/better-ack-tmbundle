@@ -88,10 +88,31 @@ class AckInProject::Search
     options << "--#{result['followSymLinks'] == 1 ? '' : 'no'}follow"
     options << "--#{result['loadAckRC'] == 1 ? '' : 'no'}env"
 
+    options << '-G'
+    options << "^(?#{folder_pattern})".inspect
+
     AckInProject.update_search_history result['returnArgument']
     AckInProject.update_pbfind result['returnArgument']
 
     %{cd #{e_sh search_directory}; #{e_sh ack} #{options.join(' ')} #{e_sh result['returnArgument']}}
+  end
+  
+  def folder_pattern
+    @folder_pattern ||= escape_folder_pattern(get_folder_pattern)
+  end
+  
+  def escape_folder_pattern pattern
+    pattern.gsub('/', '\/')
+  end
+  
+  def get_folder_pattern
+    if tmproj_path = Dir["#{ENV['TM_PROJECT_DIRECTORY']}/*.tmproj"].first
+      open(tmproj_path) do |io|
+        OSX::PropertyList.load(io)["documents"][0]["regexFolderFilter"]
+      end
+    else
+      '!.*/(\.[^/]*|CVS|_darcs|_MTN|\{arch\}|blib|.*~\.nib|.*\.(framework|app|pbproj|pbxproj|xcode(proj)?|bundle))$'
+    end
   end
   
   def search
