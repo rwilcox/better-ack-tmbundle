@@ -40,7 +40,7 @@ class AckInProject::Search
   end
   
   def linked_content(line, content)
-    href = "txmt://open/?url=file://#{e_url file_in_search_directory(current_file)}&line=#{line}"
+    href = "txmt://open/?url=file://#{e_url current_file}&line=#{line}"
     %Q|<pre><a href="#{href}">#{scrub(escape(content))}</a></pre>|
   end
   
@@ -94,7 +94,7 @@ class AckInProject::Search
     AckInProject.update_search_history result['returnArgument']
     AckInProject.update_pbfind result['returnArgument']
 
-    %{cd #{e_sh search_directory}; #{e_sh ack} #{options.join(' ')} #{e_sh result['returnArgument']}}
+    %{cd #{e_sh search_directory}; mdfind -onlyin . #{e_sh result['returnArgument']} | xargs #{e_sh ack} #{options.join(' ')} #{e_sh result['returnArgument']}}
   end
   
   def folder_pattern
