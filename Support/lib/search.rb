@@ -4,11 +4,12 @@ class AckInProject::Search
   include AckInProject::Environment
   AckInProject::Environment.ghetto_include %w(escape), binding
 
-  attr_accessor :plist, :current_file, :lines_matched, :files_matched
+  attr_accessor :plist, :current_file, :lines_matched, :files_matched, :use_mdfind
   
   def initialize(plist)
     self.plist = plist;
     self.lines_matched = self.files_matched = 0
+    self.use_mdfind = false
   end
   
   def line_matched
@@ -40,7 +41,12 @@ class AckInProject::Search
   end
   
   def linked_content(line, content)
-    href = "txmt://open/?url=file://#{e_url current_file}&line=#{line}"
+    href = ""
+    if use_mdfind
+      href = "txmt://open/?url=file://#{e_url current_file}&line=#{line}"
+    else
+      href = "txmt://open/?url=file://#{e_url file_in_search_directory(current_file)}&line=#{line}"
+    end
     %Q|<pre><a href="#{href}">#{scrub(escape(content))}</a></pre>|
   end
   
@@ -93,8 +99,13 @@ class AckInProject::Search
 
     AckInProject.update_search_history result['returnArgument']
     AckInProject.update_pbfind result['returnArgument']
-
-    %{cd #{e_sh search_directory}; mdfind -onlyin . #{e_sh result['returnArgument']} | xargs #{e_sh ack} #{options.join(' ')} #{e_sh result['returnArgument']}}
+    if use_mdfind
+      %{cd #{e_sh search_directory}; mdfind -onlyin -0 . "#{e_sh result['returnArgument']}" | xargs -0 #{e_sh ack} #{options.join(' ')} "#{e_sh result['returnArgument']}"}
+      # we need -0 because we're dealing with files that could have spaces in their names. -0 says we should have NULL characters, instead of whitespace. On the other end, xargs understands that with ITS -0
+      # WD-rpw 07-08-2010
+    else
+      %{cd #{e_sh search_directory}; #{e_sh ack} #{options.join(' ')} "#{e_sh result['returnArgument']}"}
+    end
   end
   
   def folder_pattern
